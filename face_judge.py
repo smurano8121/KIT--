@@ -1,60 +1,123 @@
 import numpy as np
 import sys
 import cv2
+from flask import Flask, jsonify, abort, make_response
 
+api = Flask(__name__)
+
+# GETの実装
+@api.route('/get', methods=['GET'])
+def get():
+    # 分類器
+    cascade_path = "./lib/haarcascade_frontalface_default.xml"
+
+    # 分類器の特徴量を取得
+    cascade = cv2.CascadeClassifier(cascade_path)
+
+    # Weカメラの設定
+    cap = cv2.VideoCapture(0)
+
+    if cap.isOpened() is False:
+        print("can not open camera")
+        sys.exit()
+
+    elif cap.isOpened() is True:
+        face_judge = 0 #0の時は顔が認識されていない
+        ret, frame = cap.read()
+        frame = cv2.resize(frame, (int(frame.shape[1]*0.7), int(frame.shape[0]*0.7)))
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+        facerect = cascade.detectMultiScale(
+            gray,
+            scaleFactor=1.11,
+            minNeighbors=3,
+            minSize=(100, 100)
+        )
+
+        # 顔枠トリミング用の色指定
+        color = (255,255,255)
+
+        if len(facerect) != 0:
+            face_judge = 1
+        else:
+            face_judge = 0
+        print(face_judge)
+
+    cap.release()
+    result = { "FaceJudge_Result": face_judge }
+    return make_response(jsonify(result))
+
+# エラーハンドリング
+@api.errorhandler(404)
+def not_found(error):
+    return make_response(jsonify({'error': 'Not found'}), 404)
+
+# ホスト0.0.0.0, ポート3001番でサーバーを起動
+if __name__ == '__main__':
+    api.run(host='0.0.0.0', port=3001)
+
+#############
 # 分類器
-cascade_path = "./lib/haarcascade_frontalface_default.xml"
+# cascade_path = "./lib/haarcascade_frontalface_default.xml"
+#
+# # 分類器の特徴量を取得
+# cascade = cv2.CascadeClassifier(cascade_path)
+#
+# # Weカメラの設定
+# cap = cv2.VideoCapture(0)
+#
+# if cap.isOpened() is False:
+#     print("can not open camera")
+#     sys.exit()
+#
+# while True:
+#     ret, frame = cap.read()
+#     frame = cv2.resize(frame, (int(frame.shape[1]*0.7), int(frame.shape[0]*0.7)))
+#     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#
+#     facerect = cascade.detectMultiScale(
+#         gray,
+#         scaleFactor=1.11,
+#         minNeighbors=3,
+#         minSize=(100, 100)
+#     )
+#
+#     # 顔枠トリミング用の色指定
+#     color = (255,255,255)
+#
+#     if len(facerect) != 0:
+#         for x, y, w, h in facerect:
+#             # 顔検出した部分に枠を描画
+#             cv2.rectangle(
+#                 frame,
+#                 (x, y),
+#                 (x + w, y + h),
+#                 color,
+#                 thickness=2
+#             )
+#             face_judge = 1
+#     else:
+#         face_judge = 0
+#
+#     print(face_judge)
+#     cv2.imshow('frame', frame)
+#
+#     # キー入力を1ms待って、k が27（ESC）だったらBreakする
+#     k = cv2.waitKey(1)
+#     if k == 27:
+#         break
+#
+# # キャプチャをリリースして、ウィンドウをすべて閉じる
+# cap.release()
+# cv2.destroyAllWindows()
+################
 
-# 分類器の特徴量を取得
-cascade = cv2.CascadeClassifier(cascade_path)
+################
+# 画像の顔認証
 
 # 読み込むファイル → 出力先
 # image_file = "person.jpg"
 # output_path = "./outputs/"+ image_file
-
-# Weカメラの設定
-cap = cv2.VideoCapture(0)
-
-if cap.isOpened() is False:
-    print("can not open camera")
-    sys.exit()
-
-while True:
-    ret, frame = cap.read()
-
-    frame = cv2.resize(frame, (int(frame.shape[1]*0.7), int(frame.shape[0]*0.7)))
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    facerect = cascade.detectMultiScale(
-        gray,
-        scaleFactor=1.11,
-        minNeighbors=3,
-        minSize=(100, 100)
-    )
-
-    # 顔枠トリミング用の色指定
-    color = (255,255,255)
-
-    if len(facerect) != 0:
-        for x, y, w, h in facerect:
-            # 顔検出した部分に枠を描画
-            cv2.rectangle(
-                frame,
-                (x, y),
-                (x + w, y + h),
-                (255, 255, 255),
-                thickness=2
-            )
-    cv2.imshow('frame', frame)
-
-    # キー入力を1ms待って、k が27（ESC）だったらBreakする
-    k = cv2.waitKey(1)
-    if k == 27:
-        break
-
-# キャプチャをリリースして、ウィンドウをすべて閉じる
-cap.release()
-cv2.destroyAllWindows()
 
     # ファイルの読み込み＋グレースケール
     # img = cv2.imread(image_file)
@@ -78,3 +141,4 @@ cv2.destroyAllWindows()
     #
     #     #認識結果の保存
     #     cv2.imwrite(output_path, img)
+################
